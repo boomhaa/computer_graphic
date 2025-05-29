@@ -165,7 +165,7 @@ def main():
     if not glfw.init():
         sys.exit(1)
 
-    window = glfw.create_window(window_width, window_height, "Растровая графика", None, None)
+    window = glfw.create_window(window_width, window_height, "lab4", None, None)
     if not window:
         glfw.terminate()
         sys.exit(2)
