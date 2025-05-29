@@ -1,11 +1,11 @@
 import glfw
 from OpenGL.GL import *
 from OpenGL.GLU import *
+from OpenGL.GLUT import *  # Add GLUT import
 import numpy as np
 from PIL import Image
 import time
 import math
-
 
 width, height = 800, 600
 
@@ -21,6 +21,79 @@ camera_angle_y = 45.0
 use_texture = True
 light_enabled = True
 rotate_cube = True
+
+fps_update_interval = 0.5
+fps_last_update = time.time()
+fps_frame_count = 0
+current_fps = 0
+
+
+def draw_fps_text(fps):
+    """Рисуем текстовый FPS счетчик используя GLUT"""
+    # Save matrices
+    glMatrixMode(GL_PROJECTION)
+    glPushMatrix()
+    glLoadIdentity()
+    gluOrtho2D(0, width, 0, height)
+
+    glMatrixMode(GL_MODELVIEW)
+    glPushMatrix()
+    glLoadIdentity()
+
+    # Disable effects that would interfere
+    if light_enabled:
+        glDisable(GL_LIGHTING)
+    if use_texture:
+        glDisable(GL_TEXTURE_2D)
+    glDisable(GL_DEPTH_TEST)
+
+    # Draw gray background
+    glColor3f(0.3, 0.3, 0.3)
+    glBegin(GL_QUADS)
+    glVertex2f(10, height - 40)
+    glVertex2f(110, height - 40)
+    glVertex2f(110, height - 10)
+    glVertex2f(10, height - 10)
+    glEnd()
+
+    # Draw FPS text using GLUT
+    glColor3f(1.0, 1.0, 1.0)  # White color
+    fps_text = f"FPS: {fps}"
+
+    glRasterPos2f(20, height - 30)
+    for char in fps_text:
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, ord(char))
+
+    # Restore states
+    glEnable(GL_DEPTH_TEST)
+    if use_texture:
+        glEnable(GL_TEXTURE_2D)
+    if light_enabled:
+        glEnable(GL_LIGHTING)
+
+    # Restore matrices
+    glMatrixMode(GL_MODELVIEW)
+    glPopMatrix()
+    glMatrixMode(GL_PROJECTION)
+    glPopMatrix()
+
+
+def update_fps():
+    """Calculate and update the FPS counter"""
+    global fps_frame_count, fps_last_update, current_fps
+
+    # Increment frame counter
+    fps_frame_count += 1
+
+    # Check if it's time to update the displayed FPS
+    current_time = time.time()
+    time_diff = current_time - fps_last_update
+
+    # Update FPS approximately every fps_update_interval seconds
+    if time_diff >= fps_update_interval:
+        current_fps = int(fps_frame_count / time_diff)
+        fps_frame_count = 0
+        fps_last_update = current_time
 
 
 def load_texture(path):
@@ -169,6 +242,7 @@ def update_position():
         y_pos = -0.5
         y_vel = -y_vel * 1.001
 
+
 def key_callback(window, key, scancode, action, mods):
     global use_texture, light_enabled, rotate_cube, y_pos, y_vel
     global camera_distance, camera_angle_x, camera_angle_y
@@ -198,10 +272,13 @@ def key_callback(window, key, scancode, action, mods):
 
 def main():
     global texture_id
+    rotation_angle = 0.0
+
     if not glfw.init():
         print("Не удалось инициализировать GLFW")
         return
 
+    glutInit()
     window = glfw.create_window(width, height, "lab6", None, None)
     if not window:
         print("Не удалось создать окно GLFW")
@@ -209,8 +286,8 @@ def main():
         return
 
     glfw.make_context_current(window)
+    glfw.swap_interval(0)
     glfw.set_key_callback(window, key_callback)
-
 
     glViewport(0, 0, width, height)
     glEnable(GL_DEPTH_TEST)
@@ -236,6 +313,7 @@ def main():
         gluLookAt(x, y, z, 0, 0, 0, 0, 1, 0)
 
         update_position()
+        update_fps()
 
         draw_floor()
 
@@ -247,9 +325,14 @@ def main():
 
         glPushMatrix()
         glTranslatef(0.0, y_pos, 0.0)
-
-        draw_cube()
+        draw_cube(rotation_angle)
         glPopMatrix()
+
+        # Update rotation angle
+        if rotate_cube:
+            rotation_angle += 1.0
+
+        draw_fps_text(current_fps)
 
         glfw.swap_buffers(window)
         glfw.poll_events()
